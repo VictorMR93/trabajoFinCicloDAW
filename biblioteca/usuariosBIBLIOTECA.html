@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Usuarios Biblioteca (CRUD)</title>
+	<style>
+
+        thead, tfoot{
+            text-align: center;
+        }
+
+        td{
+            text-align: center;
+            padding: 6px 12px 6px 12px;
+        }
+
+        #dialogAnadirUsuario{
+            display: none;
+        }
+
+        .dataTables_filter{
+            font-size: 20px;
+        }
+
+        #btAnade{
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 20px;
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+        #btVolver{
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+
+    </style>
+     
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <link href="jquery-ui-1.12.1.custom/jquery-ui.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="DataTables/datatables.min.css"/>
+    <script type="text/javascript" src="DataTables/datatables.min.js"></script>
+    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <script src="js/bootstrap.min.js"></script>
+
+
+    <script type="text/javascript">
+
+        $(function(){
+            cargarTabla();
+            $("#btAnade").click(dialogoAnadeUsuario);
+        });
+
+        function cargarTabla(){
+
+          var datos = {
+              servicio: "listar"
+          }
+
+          $.ajax({
+              url: "servidor.php",  
+              type: "post",
+              data: JSON.stringify(datos),
+              dataType: "json",
+              success: MuestraUsuarios,
+              error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+          });
+
+        }
+
+        function LlenaTabla(rs){
+            $('#tabla_usuarios').dataTable({
+                "aaData": rs,
+                "aoColumns": [
+                    {"mDataProp": "ID"},
+                    {"mDataProp": "DNI"},
+                    {"mDataProp": "NOMBRE"},
+                    {"mDataProp": "APELLIDOS"},
+                    {"mDataProp": "TELEFONO"},
+                    {"mDataProp": "EMAIL"},
+                    {"mDataProp": "FECHA_NACIMIENTO"},
+                    {"mDataProp": "FECHA_ALTA"},
+                    {
+                        mRender: function(data, type, row){       
+
+                            var sal= '<button class="borrar btn btn-danger btn-sm" onclick="borrarUsuario('+row.ID+',\''+row.DNI+'\')">Borrar</button>'+
+                            ' <button class="modificar btn btn-warning btn-sm" onclick="buscaUsuario('+row.ID+')">Modificar</button>';
+
+                            return sal;        
+                            
+                        }    
+                    }
+                ],
+                "language": {   /*traducción de la data table*/
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sInfoEmpty": "Mostrando usuarios del 0 al 0 de un total de 0 usuarios",
+                    "info": "Mostrando _START_ de _END_ de un total de _TOTAL_ usuarios",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ usuarios)",
+                    "lengthMenu": "Mostrar _MENU_ usuarios",
+                    "search": "_INPUT_",
+                    "searchPlaceholder": "Buscar usuarios...",
+                    "oPaginate": {
+                        "sFirst":    "Primero",
+                        "sLast":     "Último",
+                        "sNext":     "Siguiente",
+                        "sPrevious": "Anterior"
+                    },
+                }, 
+                "bDestroy": true   
+            });            
+        }
+
+        function MuestraUsuarios(rs){
+            $("#filas_tabla").html(" ");
+            LlenaTabla(rs, $("#filas_tabla"));
+
+        }
+
+        function anadeUsuario(){
+
+            var datos = {
+              servicio: "insertar",
+              dni: $("#dni").val(),
+              nombre: $("#nombre").val(),
+              apellidos: $("#apellidos").val(),
+              telefono: $("#telefono").val(),
+              email: $("#email").val(),
+              fecha_nacimiento: $("#fecha_nacimiento").val(),
+              fecha_alta: $("#fecha_alta").val()
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraUsuarios,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+            
+        }
+
+        function eliminarUsuario(id){
+
+            var datos = {
+                servicio: "borrar",
+                id: id
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraUsuarios,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function buscaUsuario(idfila){
+
+            var datos = {
+                servicio: "selUsuarioID",
+                id: idfila
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: cargaUsuarios,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function cargaUsuarios(resp){
+
+            $("#dni").val(resp.DNI);
+            $("#nombre").val(resp.NOMBRE);
+            $("#apellidos").val(resp.APELLIDOS);
+            $("#telefono").val(resp.TELEFONO);
+            $("#email").val(resp.EMAIL);
+            $("#fecha_nacimiento").val(resp.FECHA_NACIMIENTO);
+            $("#fecha_alta").val(resp.FECHA_ALTA);
+
+            dialogoModificaUsuario(resp.ID);
+        }
+
+        function modificaUsuario(modid){
+
+            var datos = {
+                servicio: "modificar",
+                
+                dni: $("#dni").val(),
+                nombre: $("#nombre").val(),
+                apellidos: $("#apellidos").val(),
+                telefono: $("#telefono").val(),
+                email: $("#email").val(),
+                fecha_nacimiento: $("#fecha_nacimiento").val(),
+                fecha_alta: $("#fecha_alta").val(),
+                id: modid
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraUsuarios,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function borrarUsuario(idfila, dnifila){
+
+            var id = idfila;
+            var dni = dnifila
+            $("#dialogBorrarUsuario .mensaje").html("¿Deseas eliminar realmente al usuario con DNI "+dni+"?");
+
+            $("#dialogBorrarUsuario").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Eiminar usuario": function() {
+                        eliminarUsuario(id);
+                    $( this ).dialog( "close" );
+                    },
+                    "No eliminarlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoAnadeUsuario(){
+
+            $("#dni").val("");
+            $("#nombre").val("");
+            $("#apellidos").val("");
+            $("#telefono").val("");
+            $("#email").val("");
+            $("#fecha_nacimiento").val("");
+            $("#fecha_alta").val("");
+
+            $("#dialogAnadirUsuario").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Añadir usuario",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Añadir usuario": function() {
+                        anadeUsuario();
+                    $( this ).dialog( "close" );
+                    },
+                    "No añadirlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoModificaUsuario(modid){
+           
+            $("#dialogAnadirUsuario").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Modificar usuario",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Modificar usuario": function() {
+                        modificaUsuario(modid);
+                    $( this ).dialog( "close" );
+                    },
+                    "No modificar": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+    </script>
+	
+  </head>
+  <body style="margin: 30px">
+
+      <h2>Administración: Visualización, creación, modificación y eliminación de usuarios</h2>  
+
+      <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="index.php">Inicio</a></li>
+              <li class="breadcrumb-item"><a href="administracion.php">Administración</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Administración usuarios</li>
+            </ol>
+      </nav>
+        
+      <div style="overflow-x:auto;"> <!-- para hacer responsiva la tabla-->
+            <table id="tabla_usuarios" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>DNI</th>
+                        <th>NOMBRE</th>
+                        <th>APELLIDOS</th>
+                        <th>TELEFONO</th>
+                        <th>EMAIL</th>
+                        <th>FECHA NACIMIENTO</th>
+                        <th>FECHA ALTA</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>  
+                
+                <tbody id="filas_tabla">
+                
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <th>ID</th>
+                        <th>DNI</th>
+                        <th>NOMBRE</th>
+                        <th>APELLIDOS</th>
+                        <th>TELEFONO</th>
+                        <th>EMAIL</th>
+                        <th>FECHA NACIMIENTO</th>
+                        <th>FECHA ALTA</th>
+                        <th>Acciones</th>
+                    </tr>
+                </tfoot>
+
+            </table>
+      </div>
+
+      <center><input type="button" value="+ AÑADIR USUARIO" id="btAnade" class="btn btn-primary"/></center>
+      <br>
+      <center><a href="index.php"><input type="button" value="VOLVER AL INICIO" id="btVolver" class="btn btn-danger"/></a></center>
+
+      <br/>
+      <br/>
+
+      <div id="dialogBorrarUsuario" title="Eliminar usuario">
+          <p><span class="mensaje"></span></p>
+      </div>
+
+      <div id="dialogAnadirUsuario" title="Añadir usuario">
+          <fieldset>
+            <legend>Datos del usuario</legend>
+            <label for="dni">DNI</label>
+            <input type="text" id="dni" name="dni" placeholder="45982265F"/>
+            <span id="infoDNI"> </span>
+            <br/>
+            <label for="nombre">NOMBRE:</label>
+            <input type="text" id="nombre" name="nombre" placeholder="Eustaquio"/>
+            <br/>
+            <label for="apellidos">APELLIDOS:</label>
+            <input type="text" id="apellidos" name="apellidos" placeholder="Pruebini Chiquitini"/>
+            <br/>
+            <label for="telefono">TELEFONO:</label>
+            <input type="number" id="telefono" name="telefono" placeholder="687326459"/>
+            <br/>
+            <label for="email">EMAIL:</label>
+            <input type="text" id="email" name="email" placeholder="pruebini@gmail.com"/>
+            <br/>
+            <label for="fecha_nacimiento">FECHA NACIMIENTO:</label>
+            <input type="date" id="fecha_nacimiento" name="fecha_nacimiento"/>
+            <br/>
+            <label for="fecha_alta">FECHA ALTA:</label>
+            <input type="date" id="fecha_alta" name="fecha_alta"/>
+            <br/>
+        </fieldset>    
+      </div>
+
+  </body>
+</html>

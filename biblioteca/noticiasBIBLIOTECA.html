@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Noticias Biblioteca (CRUD)</title>
+	<style>
+
+        thead, tfoot{
+            text-align: center;
+        }
+
+        td{
+            text-align: center;
+            padding: 6px 12px 6px 12px;
+        }
+
+        #dialogAnadirNoticia{
+            display: none;
+        }
+
+        .dataTables_filter{
+            font-size: 20px;
+        }
+
+        #btAnade{
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 20px;
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+        #btVolver{
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+
+    </style>
+     
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <link href="jquery-ui-1.12.1.custom/jquery-ui.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="DataTables/datatables.min.css"/>
+    <script type="text/javascript" src="DataTables/datatables.min.js"></script>
+    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <script src="js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+
+        $(function(){
+            cargarTabla();
+            $("#btAnade").click(dialogoAnadeNoticia);
+        });                                              
+                                                        
+        function cargarTabla(){
+
+          var datos = {
+              servicio: "listarNoticia"
+          }
+
+          $.ajax({
+              url: "servidor.php",  
+              type: "post",
+              data: JSON.stringify(datos),
+              dataType: "json",
+              success: MuestraNoticias,
+              error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+          });
+
+        }
+
+        function LlenaTabla(rs){
+            $('#tabla_noticias').dataTable({
+                "aaData": rs,
+                
+                "aoColumns": [
+                    {"mDataProp": "ID_NOTICIA"},
+                    {"mDataProp": "TITULO_NOTICIA"},
+                    {"mDataProp": "CONTENIDO"},
+                    {"mDataProp": "FECHA_NOTICIA"},
+                    {
+                        mRender: function(data, type, row){       
+
+                            var sal= '<button class="borrar btn btn-danger btn-sm" onclick="borrarNoticia('+row.ID_NOTICIA+',\''+row.TITULO_NOTICIA+'\')">Borrar</button>'+
+                            ' <button class="modificar btn btn-warning btn-sm" onclick="buscaNoticia('+row.ID_NOTICIA+')">Modificar</button>';
+
+                            return sal;        
+                            
+                        }    
+                    }
+                ],
+                columnDefs: [ {          /*para acortar la columna Contenido (solo la visualización en la tabla), ya que ocuparía mucho*/
+                    targets: 2,
+                    render: function ( data, type, row ) {
+                        return data.substr(0, 50);
+                    }
+                }],
+                "language": {   /*traducción de la data table*/
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sInfoEmpty": "Mostrando noticias del 0 al 0 de un total de 0 noticias",
+                    "info": "Mostrando _START_ de _END_ de un total de _TOTAL_ noticias",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ noticias)",
+                    "lengthMenu": "Mostrar _MENU_ noticias",
+                    "search": "_INPUT_",
+                    "searchPlaceholder": "Buscar noticias...",
+                    "oPaginate": {
+                        "sFirst":    "Primero",
+                        "sLast":     "Último",
+                        "sNext":     "Siguiente",
+                        "sPrevious": "Anterior"
+                    },
+                }, 
+                "bDestroy": true   
+            });            
+        }
+
+        function MuestraNoticias(rs){
+            $("#filas_tabla").html(" ");
+            LlenaTabla(rs, $("#filas_tabla"));
+
+        }
+
+        function anadeNoticia(){
+
+            var datos = {
+              servicio: "insertarNoticia",
+              titulo_noticia: $("#titulo_noticia").val(),
+              contenido: $("#contenido").val(),
+              fecha_noticia: $("#fecha_noticia").val()
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraNoticias,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+            $("#titulo_noticia").val("");
+            $("#contenido").val("");
+            $("#fecha_noticia").val("");
+            
+        }
+
+        function eliminarNoticia(id_noticia){
+
+            var datos = {
+                servicio: "borrarNoticia",
+                id_noticia: id_noticia
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraNoticias,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function buscaNoticia(id_noticia){
+
+            var datos = {
+                servicio: "selNoticiaID",
+                id_noticia: id_noticia
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: cargaNoticias,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function cargaNoticias(resp){
+
+            $("#titulo_noticia").val(resp.TITULO_NOTICIA);
+            $("#contenido").val(resp.CONTENIDO);
+            $("#fecha_noticia").val(resp.FECHA_NOTICIA);
+
+            dialogoModificaNoticia(resp.ID_NOTICIA);
+        }
+
+        function modificaNoticia(modid){
+
+            var datos = {
+                servicio: "modificarNoticia",
+                
+                titulo_noticia: $("#titulo_noticia").val(),
+                contenido: $("#contenido").val(),
+                fecha_noticia: $("#fecha_noticia").val(),
+                id_noticia: modid
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraNoticias,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function borrarNoticia(idfila, titulofila){
+
+            var id_noticia = idfila;
+            var titulo = titulofila
+            $("#dialogBorrarNoticia .mensaje").html("¿Deseas eliminar realmente la noticia con ID " +id_noticia+ " de título "+titulo+"?");
+
+            $("#dialogBorrarNoticia").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Eiminar noticia": function() {
+                        eliminarNoticia(id_noticia);
+                    $( this ).dialog( "close" );
+                    },
+                    "No eliminarla": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoAnadeNoticia(){
+
+            $("#titulo_noticia").val("");
+            $("#contenido").val("");
+            $("#fecha_noticia").val("");
+
+            $("#dialogAnadirNoticia").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Añadir noticia",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Añadir noticia": function() {
+                        anadeNoticia();
+                    $( this ).dialog( "close" );
+                    },
+                    "No añadirlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoModificaNoticia(modid){
+           
+            $("#dialogAnadirNoticia").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Modificar noticia",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Modificar noticia": function() {
+                        modificaNoticia(modid);
+                    $( this ).dialog( "close" );
+                    },
+                    "No modificar": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+    </script>
+	
+  </head>
+  <body style="margin: 30px">
+
+      <h2>Administración: Visualización, creación, modificación y eliminación de noticias</h2>  
+
+      <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="index.php">Inicio</a></li>
+              <li class="breadcrumb-item"><a href="administracion.php">Administración</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Administración noticias</li>
+            </ol>
+      </nav>
+        
+      <div style="overflow-x:auto;"> <!-- para hacer responsiva la tabla-->
+            <table id="tabla_noticias" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID_NOTICIA</th>
+                        <th>TITULO</th>
+                        <th>CONTENIDO</th>
+                        <th>FECHA NOTICIA</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>  
+                
+                <tbody id="filas_tabla">
+                
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <th>ID_NOTICIA</th>
+                        <th>TITULO</th>
+                        <th>CONTENIDO</th>
+                        <th>FECHA NOTICIA</th>
+                        <th>Acciones</th>
+                    </tr>
+                </tfoot>
+
+            </table>
+      </div>
+
+      <center><input type="button" value="+ AÑADIR NOTICIA" id="btAnade" class="btn btn-primary"/></center>
+      <br>
+      <center><a href="index.php"><input type="button" value="VOLVER AL INICIO" id="btVolver" class="btn btn-danger"/></a></center>
+
+      <br/>
+      <br/>
+
+      <div id="dialogBorrarNoticia" title="Eliminar noticia">
+          <p><span class="mensaje"></span></p>
+      </div>
+
+      <div id="dialogAnadirNoticia" title="Añadir noticia">
+          <fieldset>
+            <legend>Datos de la noticia</legend>
+            <label for="titulo_noticia">TITULO:</label>
+            <input type="text" id="titulo_noticia" name="titulo_noticia"/>
+            <br/>
+            <label for="contenido">CONTENIDO:</label>
+            <textarea rows="5" cols="45" id="contenido" name="contenido"></textarea>
+            <br/>
+            <label for="fecha_noticia">FECHA NOTICIA:</label>
+            <input type="date" id="fecha_noticia" name="fecha_noticia"/>
+            <br/>
+        </fieldset>    
+      </div>
+
+  </body>
+</html>

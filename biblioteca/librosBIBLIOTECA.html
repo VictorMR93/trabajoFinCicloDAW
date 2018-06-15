@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Libros Biblioteca (CRUD)</title>
+	<style>
+
+        thead, tfoot{
+            text-align: center;
+        }
+
+        td{
+            text-align: center;
+            
+        }
+
+        #dialogAnadirLibro{
+            display: none;
+        }
+
+        .dataTables_filter{
+            font-size: 20px;
+        }
+
+        #btAnade{
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 20px;
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+        #btVolver{
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+    </style>
+     
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <link href="jquery-ui-1.12.1.custom/jquery-ui.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="DataTables/datatables.min.css"/>
+    <script type="text/javascript" src="DataTables/datatables.min.js"></script>
+    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <script src="js/bootstrap.min.js"></script>
+
+
+    <script type="text/javascript">
+
+        $(function(){
+            cargarTabla();
+            $("#btAnade").click(dialogoAnadeLibro);
+        });
+
+        function cargarTabla(){
+
+          var datos = {
+              servicio: "listarLibro"
+          }
+
+          $.ajax({
+              url: "servidor.php",  
+              type: "post",
+              data: JSON.stringify(datos),
+              dataType: "json",
+              success: MuestraLibros,
+              error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+          });
+
+        }
+
+        function LlenaTabla(rs){
+            $('#tabla_libros').dataTable({
+                "aaData": rs,
+                "aoColumns": [
+                    {"mDataProp": "ID"},
+                    {
+                        mRender: function(data, type, row){
+                             var salFoto = '<img src="'+row.PORTADA+'" width="90px" height="140px">'; 
+                             return salFoto;
+                        }     
+                    },
+                    {"mDataProp": "ISBN"},
+                    {"mDataProp": "TITULO"},
+                    {"mDataProp": "AUTOR"},
+                    {"mDataProp": "GENERO"},
+                    {"mDataProp": "PUBLICACION"},
+                    {"mDataProp": "EDITORIAL"},
+                    {"mDataProp": "PAGINAS"},
+                    {
+                        mRender: function(data, type, row){       
+                            var sal= '<button class="borrar btn btn-danger btn-sm" onclick="borrarLibro('+row.ID+',\''+row.TITULO+'\')">Borrar</button>'+
+                            ' <button class="modificar btn btn-warning btn-sm" onclick="buscaLibro('+row.ID+')">Modificar</button>';
+                            return sal;        
+                        }    
+                    }
+                ],
+                "language": {   /*traducción de la data table*/
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sInfoEmpty": "Mostrando libros del 0 al 0 de un total de 0 libros",
+                    "info": "Mostrando _START_ de _END_ de un total de _TOTAL_ libros",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ libros)",
+                    "lengthMenu": "Mostrar _MENU_ libros",
+                    "search": "_INPUT_",
+                    "searchPlaceholder": "Buscar libros...",
+                    "oPaginate": {
+                        "sFirst":    "Primero",
+                        "sLast":     "Último",
+                        "sNext":     "Siguiente",
+                        "sPrevious": "Anterior"
+                    },
+                }, 
+                "bDestroy": true   
+            });            
+        }
+
+        function MuestraLibros(rs){
+            $("#filas_tabla").html(" ");
+            LlenaTabla(rs, $("#filas_tabla"));
+
+        }
+
+        function anadeLibro(){
+
+            var datos = {
+              servicio: "insertarLibro",
+              portada: $("#portada").val(),
+              isbn: $("#isbn").val(),
+              titulo: $("#titulo").val(),
+              autor: $("#autor").val(),
+              genero: $("#genero").val(),
+              publicacion: $("#publicacion").val(),
+              editorial: $("#editorial").val(),
+              paginas: $("#paginas").val()
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraLibros,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+            
+        }
+
+        function eliminarLibro(id){
+
+            var datos = {
+                servicio: "borrarLibro",
+                id: id
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraLibros,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function buscaLibro(idfila){
+
+            var datos = {
+                servicio: "selLibroID",
+                id: idfila
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: cargaLibros,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function cargaLibros(resp){
+
+            $("#portada").val(resp.PORTADA);
+            $("#isbn").val(resp.ISBN);
+            $("#titulo").val(resp.TITULO);
+            $("#autor").val(resp.AUTOR);
+            $("#genero").val(resp.GENERO);
+            $("#publicacion").val(resp.PUBLICACION);
+            $("#editorial").val(resp.EDITORIAL);
+            $("#paginas").val(resp.PAGINAS);
+
+            dialogoModificaLibro(resp.ID);
+        }
+
+        function modificaLibro(modid){
+
+            var datos = {
+                servicio: "modificarLibro",
+            
+                portada: $("#portada").val(),
+                isbn: $("#isbn").val(),
+                titulo: $("#titulo").val(),
+                autor: $("#autor").val(),
+                genero: $("#genero").val(),
+                publicacion: $("#publicacion").val(),
+                editorial: $("#editorial").val(),
+                paginas: $("#paginas").val(),
+                id: modid
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraLibros,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function borrarLibro(idfila, titulofila){ 
+
+            var id = idfila;
+            var titulo = titulofila;
+            $("#dialogBorrarLibro .mensaje").html("¿Deseas eliminar realmente el libro \""+titulo+"\"?");
+
+            $("#dialogBorrarLibro").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Eiminar libro": function() {
+                        eliminarLibro(id);
+                    $( this ).dialog( "close" );
+                    },
+                    "No eliminarlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoAnadeLibro(){
+
+            $("#portada").val("");
+            $("#isbn").val("");
+            $("#titulo").val("");
+            $("#autor").val("");
+            $("#genero").val("");
+            $("#publicacion").val("");
+            $("#editorial").val("");
+            $("#paginas").val("");
+
+            $("#dialogAnadirLibro").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Añadir libro",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Añadir libro": function() {
+                        anadeLibro();
+                    $( this ).dialog( "close" );
+                    },
+                    "No añadirlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoModificaLibro(modid){
+           
+            $("#dialogAnadirLibro").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Modificar libro",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Modificar libro": function() {
+                        modificaLibro(modid);
+                    $( this ).dialog( "close" );
+                    },
+                    "No modificar": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+    </script>
+	
+  </head>
+  <body style="margin: 30px">
+
+      <h2>Administración: Visualización, creación, modificación y eliminación de libros</h2>  
+
+      <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="index.php">Inicio</a></li>
+              <li class="breadcrumb-item"><a href="administracion.php">Administración</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Administración libros</li>
+            </ol>
+      </nav>
+
+      <div style="overflow-x:auto;">    <!-- para hacer responsiva la tabla-->
+            <table id="tabla_libros" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>PORTADA</th>
+                        <th>ISBN</th>
+                        <th>TITULO</th>
+                        <th>AUTOR</th>
+                        <th>GENERO</th>
+                        <th>PUBLICACION</th>
+                        <th>EDITORIAL</th>
+                        <th>PAGINAS</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>  
+                
+                <tbody id="filas_tabla">
+                
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <th>ID</th>
+                        <th>PORTADA</th>
+                        <th>ISBN</th>
+                        <th>TITULO</th>
+                        <th>AUTOR</th>
+                        <th>GENERO</th>
+                        <th>PUBLICACION</th>
+                        <th>EDITORIAL</th>
+                        <th>PAGINAS</th>
+                        <th>Acciones</th>
+                    </tr>
+                </tfoot>
+
+            </table>
+      </div>  
+
+      <center><input type="button" value="+ AÑADIR LIBRO" id="btAnade" class="btn btn-primary"/></center>
+      <br>
+      <center><a href="index.php"><input type="button" value="VOLVER AL INICIO" id="btVolver" class="btn btn-danger"/></a></center>
+
+      <br/>
+      <br/>
+
+      <div id="dialogBorrarLibro" title="Eliminar libro">
+          <p><span class="mensaje"></span></p>
+      </div>
+
+      <div id="dialogAnadirLibro" title="Añadir libro">
+          <fieldset>
+            <legend>Datos del libro</legend>
+            <label for="portada">PORTADA:</label>
+            <input type="text" id="portada" name="portada" placeholder="Añada url de la imagen..."/>
+            <br/>
+            <label for="isbn">ISBN</label>
+            <input type="text" id="isbn" name="isbn" placeholder="9788497597807"/>
+            <span id="infoISBN"> </span>
+            <br/>
+            <label for="titulo">TITULO:</label>
+            <input type="text" id="titulo" name="titulo" placeholder="Jurassic Park" />
+            <br/>
+            <label for="autor">AUTOR:</label>
+            <input type="text" id="autor" name="autor" placeholder="Michael Crichton" />
+            <br/>
+            <label for="genero">GENERO:</label>
+            <input type="text" id="genero" name="genero" placeholder="Novela Ciencia Ficcion" />
+            <br/>
+            <label for="publicacion">PUBLICACION:</label>
+            <input type="number" id="publicacion" name="publicacion" placeholder="1990" />
+            <br/>
+            <label for="editorial">EDITORIAL:</label>
+            <input type="text" id="editorial" name="editorial" placeholder="DeBolsillo"/>
+            <br/>
+            <label for="paginas">PAGINAS:</label>
+            <input type="number" id="paginas" name="paginas" placeholder="480"/>
+            <br/>
+        </fieldset>    
+      </div>
+
+  </body>
+</html>

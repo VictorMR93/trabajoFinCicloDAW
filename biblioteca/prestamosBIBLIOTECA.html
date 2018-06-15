@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Préstamos Biblioteca (CRUD)</title>
+	<style>
+
+        thead, tfoot{
+            text-align: center;
+        }
+
+        td{
+            text-align: center;
+            padding: 6px 12px 6px 12px;
+        }
+
+        #dialogAnadirPrestamo{
+            display: none;
+        }
+
+        .dataTables_filter{
+            font-size: 20px;
+        }
+
+        #btAnade{
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 20px;
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+        #btVolver{
+            box-shadow: 0px 2px 21px -1px rgba(0,0,0,0.75);
+        }
+
+
+    </style>
+     
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <link href="jquery-ui-1.12.1.custom/jquery-ui.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="DataTables/datatables.min.css"/>
+    <script type="text/javascript" src="DataTables/datatables.min.js"></script>
+    <script src="jquery-ui-1.12.1.custom/jquery-ui.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/bootstrap.min.css" />
+    <script src="js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+
+        $(function(){
+            cargarTabla();
+            $("#btAnade").click(dialogoAnadePrestamo);
+            $("#btCargarTitulo").click(buscaTitulo);    /*el botón de cargar el título. Esto es, para cuando el admin meta el isbn, */
+        });                                             /*pueda cargar el nombre del título automáticamente sin tener que meter el nombre a mano,*/ 
+                                                        /*para evitar duplicidad de libros (que unos los haya escrito con tilde, otros no etc....*/
+        function cargarTabla(){
+
+          var datos = {
+              servicio: "listarPrestamo"
+          }
+
+          $.ajax({
+              url: "servidor.php",  
+              type: "post",
+              data: JSON.stringify(datos),
+              dataType: "json",
+              success: MuestraPrestamos,
+              error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+          });
+
+        }
+
+        function LlenaTabla(rs){
+            $('#tabla_prestamos').dataTable({
+                "aaData": rs,
+                "aoColumns": [
+                    {"mDataProp": "ID_PRESTAMO"},
+                    {"mDataProp": "DNI"},
+                    {"mDataProp": "ISBN"},
+                    {"mDataProp": "TITULO"},
+                    {"mDataProp": "FECHA_PRESTAMO"},
+                    {"mDataProp": "FECHA_DEVOLUCION"},
+                    {
+                        mRender: function(data, type, row){       
+
+                            var sal= '<button class="borrar btn btn-danger btn-sm" onclick="borrarPrestamo('+row.ID_PRESTAMO+',\''+row.DNI+'\')">Borrar</button>'+
+                            ' <button class="modificar btn btn-warning btn-sm" onclick="buscaPrestamo('+row.ID_PRESTAMO+')">Modificar</button>';
+
+                            return sal;        
+                            
+                        }    
+                    }
+                ],
+                "language": {   /*traducción de la data table*/
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sInfoEmpty": "Mostrando préstamos del 0 al 0 de un total de 0 préstamos",
+                    "info": "Mostrando _START_ de _END_ de un total de _TOTAL_ préstamos",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ préstamos)",
+                    "lengthMenu": "Mostrar _MENU_ préstamos",
+                    "search": "_INPUT_",
+                    "searchPlaceholder": "Buscar préstamos...",
+                    "oPaginate": {
+                        "sFirst":    "Primero",
+                        "sLast":     "Último",
+                        "sNext":     "Siguiente",
+                        "sPrevious": "Anterior"
+                    },
+                }, 
+                "bDestroy": true   
+            });            
+        }
+
+        function MuestraPrestamos(rs){
+            $("#filas_tabla").html(" ");
+            LlenaTabla(rs, $("#filas_tabla"));
+
+        }
+
+        function anadePrestamo(){
+
+            var datos = {
+              servicio: "insertarPrestamo",
+              dni: $("#dni").val(),
+              isbn: $("#isbn").val(),
+              titulo: $("#titulo").val(),
+              fecha_prestamo: $("#fecha_prestamo").val(),
+              fecha_devolucion: $("#fecha_devolucion").val()
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraPrestamos,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+            $("#dni").val("");
+            $("#isbn").val("");
+            $("#titulo").val("");
+            $("#fecha_prestamo").val("");
+            $("#fecha_devolucion").val("");
+            
+        }
+
+        function eliminarPrestamo(id_prestamo){
+
+            var datos = {
+                servicio: "borrarPrestamo",
+                id_prestamo: id_prestamo
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraPrestamos,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function buscaPrestamo(id_prestamo){
+
+            var datos = {
+                servicio: "selPrestamoID",
+                id_prestamo: id_prestamo
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: cargaPrestamos,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function buscaTitulo(){
+
+            var datos = {
+                servicio: "encuentraTitulo",
+                isbn: $("#isbn").val()
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: cargaTitulo,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function cargaTitulo(resp){
+            $("#titulo").val(resp.TITULO);
+        }
+
+        function cargaPrestamos(resp){
+
+            $("#dni").val(resp.DNI);
+            $("#isbn").val(resp.ISBN);
+            $("#titulo").val(resp.TITULO);
+            $("#fecha_prestamo").val(resp.FECHA_PRESTAMO);
+            $("#fecha_devolucion").val(resp.FECHA_DEVOLUCION);
+
+            dialogoModificaPrestamo(resp.ID_PRESTAMO);
+        }
+
+        function modificaPrestamo(modid){
+
+            var datos = {
+                servicio: "modificarPrestamo",
+                
+                dni: $("#dni").val(),
+                isbn: $("#isbn").val(),
+                titulo: $("#titulo").val(),
+                fecha_prestamo: $("#fecha_prestamo").val(),
+                fecha_devolucion: $("#fecha_devolucion").val(),
+                id_prestamo: modid
+            };
+
+            $.ajax({
+                url: "servidor.php",  
+                type: "post",
+                data: JSON.stringify(datos),
+                dataType: "json",
+                success: MuestraPrestamos,
+                error: function(res){alert("Ha habido un error: " + JSON.stringify(res));}
+            });
+
+        }
+
+        function borrarPrestamo(idfila, dnifila){
+
+            var id_prestamo = idfila;
+            var dni = dnifila
+            $("#dialogBorrarPrestamo .mensaje").html("¿Deseas eliminar realmente el préstamo con ID " +id_prestamo+ " del usuario con DNI "+dni+"?");
+
+            $("#dialogBorrarPrestamo").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Eiminar préstamo": function() {
+                        eliminarPrestamo(id_prestamo);
+                    $( this ).dialog( "close" );
+                    },
+                    "No eliminarlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoAnadePrestamo(){
+
+            $("#dni").val("");
+            $("#isbn").val("");
+            $("#titulo").val("");
+            $("#fecha_prestamo").val("");
+            $("#fecha_devolucion").val("");
+
+            $("#dialogAnadirPrestamo").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Añadir préstamo",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Añadir préstamo": function() {
+                        anadePrestamo();
+                    $( this ).dialog( "close" );
+                    },
+                    "No añadirlo": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+        function dialogoModificaPrestamo(modid){
+
+            console.log($("#fecha_devolucion").val());
+           
+            $("#dialogAnadirPrestamo").dialog({
+                resizable: false,
+                height: "auto",
+                width: 400,
+                modal: true,
+                title: "Modificar préstamo",
+                show: {
+                    effect: "slide",
+                    duration: 300
+                },
+                hide: {
+                    effect: "slide",
+                    duration: 300
+                },
+                buttons: {
+                    "Modificar préstamo": function() {
+                        modificaPrestamo(modid);
+                    $( this ).dialog( "close" );
+                    },
+                    "No modificar": function() {
+                    $( this ).dialog( "close" );
+                    }
+                }
+            });
+        }
+
+    </script>
+	
+  </head>
+  <body style="margin: 30px">
+
+      <h2>Administración: Visualización, creación, modificación y eliminación de préstamos</h2>  
+
+      <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="index.php">Inicio</a></li>
+              <li class="breadcrumb-item"><a href="administracion.php">Administración</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Administración préstamos</li>
+            </ol>
+      </nav>
+        
+      <div style="overflow-x:auto;"> <!-- para hacer responsiva la tabla-->
+            <table id="tabla_prestamos" class="table table-striped" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID_PRESTAMO</th>
+                        <th>DNI</th>
+                        <th>ISBN</th>
+                        <th>TITULO</th>
+                        <th>FECHA PRESTAMO</th>
+                        <th>FECHA DEVOLUCION</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>  
+                
+                <tbody id="filas_tabla">
+                
+                </tbody>
+
+                <tfoot>
+                    <tr>
+                        <th>ID_PRESTAMO</th>
+                        <th>DNI</th>
+                        <th>ISBN</th>
+                        <th>TITULO</th>
+                        <th>FECHA PRESTAMO</th>
+                        <th>FECHA DEVOLUCION</th>
+                        <th>Acciones</th>
+                    </tr>
+                </tfoot>
+
+            </table>
+      </div>
+
+      <center><input type="button" value="+ AÑADIR PRÉSTAMO" id="btAnade" class="btn btn-primary"/></center>
+      <br>
+      <center><a href="index.php"><input type="button" value="VOLVER AL INICIO" id="btVolver" class="btn btn-danger"/></a></center>
+
+      <br/>
+      <br/>
+
+      <div id="dialogBorrarPrestamo" title="Eliminar préstamo">
+          <p><span class="mensaje"></span></p>
+      </div>
+
+      <div id="dialogAnadirPrestamo" title="Añadir préstamo">
+          <fieldset>
+            <legend>Datos del préstamo</legend>
+            <label for="dni">DNI</label>
+            <input type="text" id="dni" name="dni"/>
+            <span id="infoDNI"> </span>
+            <br/>
+            <label for="isbn">ISBN:</label>
+            <input type="text" id="isbn" name="isbn"/>
+            <br/>
+            <label for="titulo">TITULO:</label>
+            <input type="text" id="titulo" name="titulo"/>
+            <input type="button" value="Cargar" id="btCargarTitulo" class="btn-info"/>
+            <br/>
+            <label for="fecha_prestamo">FECHA PRÉSTAMO:</label>
+            <input type="date" id="fecha_prestamo" name="fecha_prestamo"/>
+            <br/>
+            <label for="fecha_devolucion">FECHA DEVOLUCIÓN:</label>
+            <input type="date" id="fecha_devolucion" name="fecha_devolucion"/>
+            <br/>
+        </fieldset>    
+      </div>
+
+  </body>
+</html>
